@@ -1103,7 +1103,7 @@ VulkanCaptureManager::OverrideCreateRayTracingPipelinesKHR(VkDevice             
                                                             pPipelines);
     }
 
-    if ((result == VK_SUCCESS) && (pPipelines != nullptr))
+    if (((result == VK_SUCCESS) || (result == VK_OPERATION_DEFERRED_KHR)) && (pPipelines != nullptr))
     {
         CreateWrappedHandles<DeviceWrapper, DeferredOperationKHRWrapper, PipelineWrapper>(
             device, deferredOperation, pPipelines, createInfoCount, GetUniqueId);

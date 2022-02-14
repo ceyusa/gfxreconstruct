@@ -56,6 +56,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <future>
 
 // Types provided by this file are defined by format/platform_types.h when VK_USE_PLATFORM_ANDROID_KHR is not set.
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
@@ -858,6 +859,20 @@ class VulkanReplayConsumerBase : public VulkanConsumer
                                                         size_t                                   dataSize,
                                                         PointerDecoder<uint8_t>*                 pData);
 
+    void OverrideGetDeferredOperationMaxConcurrencyKHR(PFN_vkGetDeferredOperationMaxConcurrencyKHR func,
+                                                       const DeviceInfo*                           device_info,
+                                                       const DeferredOperationKHRInfo* deferred_operation_info);
+
+    VkResult OverrideDeferredOperationJoinKHR(PFN_vkDeferredOperationJoinKHR  func,
+                                              VkResult                        original_result,
+                                              const DeviceInfo*               device_info,
+                                              const DeferredOperationKHRInfo* deferred_operation_info);
+
+    VkResult OverrideGetDeferredOperationResultKHR(PFN_vkGetDeferredOperationResultKHR func,
+                                                   VkResult                            original_result,
+                                                   const DeviceInfo*                   device_info,
+                                                   const DeferredOperationKHRInfo*     deferred_operation_info);
+
   private:
     void RaiseFatalError(const char* message) const;
 
@@ -1013,6 +1028,8 @@ class VulkanReplayConsumerBase : public VulkanConsumer
     // Used to track if any shadow sync objects are active to avoid checking if not needed
     std::unordered_set<VkSemaphore> shadow_semaphores_;
     std::unordered_set<VkFence>     shadow_fences_;
+
+    std::vector<std::future<void>> deferred_operation_joins;
 };
 
 GFXRECON_END_NAMESPACE(decode)

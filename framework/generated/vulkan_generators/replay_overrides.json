@@ -77,6 +77,9 @@
     "vkGetBufferDeviceAddress": "OverrideGetBufferDeviceAddress",
     "vkGetBufferDeviceAddressKHR": "OverrideGetBufferDeviceAddress",
     "vkGetAccelerationStructureDeviceAddressKHR": "OverrideGetAccelerationStructureDeviceAddressKHR",
-    "vkGetRayTracingShaderGroupHandlesKHR": "OverrideGetRayTracingShaderGroupHandlesKHR"
+    "vkGetRayTracingShaderGroupHandlesKHR": "OverrideGetRayTracingShaderGroupHandlesKHR",
+    "vkGetDeferredOperationMaxConcurrencyKHR": "OverrideGetDeferredOperationMaxConcurrencyKHR",
+    "vkDeferredOperationJoinKHR": "OverrideDeferredOperationJoinKHR",
+    "vkGetDeferredOperationResultKHR": "OverrideGetDeferredOperationResultKHR"
   }
 }
