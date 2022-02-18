@@ -1114,6 +1114,14 @@ VulkanCaptureManager::OverrideCreateRayTracingPipelinesKHR(VkDevice             
             {
                 PipelineWrapper* pipeline_wrapper = reinterpret_cast<PipelineWrapper*>(pPipelines[i]);
 
+                if (deferredOperation != VK_NULL_HANDLE)
+                {
+                    auto deferred_operation_id = GetWrappedId(deferredOperation);
+                    if (deferred_operation_id != format::kNullHandleId)
+                    {
+                        pipeline_wrapper->deferred_operation_id = deferred_operation_id;
+                    }
+                }
                 uint32_t data_size = device_wrapper->property_feature_info.property_shaderGroupHandleCaptureReplaySize *
                                      pCreateInfos[i].groupCount;
                 std::vector<uint8_t> data(data_size);

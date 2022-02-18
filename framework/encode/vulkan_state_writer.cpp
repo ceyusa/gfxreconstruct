@@ -31,6 +31,7 @@
 #include <cassert>
 #include <limits>
 #include <unordered_map>
+#include <unordered_set>
 
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
 #include <android/hardware_buffer.h>
@@ -506,6 +507,7 @@ void VulkanStateWriter::WritePipelineState(const VulkanStateTable& state_table)
     std::unordered_map<format::HandleId, const util::MemoryOutputStream*> temp_render_passes;
     std::unordered_map<format::HandleId, const util::MemoryOutputStream*> temp_layouts;
     std::unordered_map<format::HandleId, const util::MemoryOutputStream*> temp_ds_layouts;
+    std::unordered_set<format::HandleId>                                  temp_deferred_operations;
 
     // First pass over pipeline table to sort pipelines by type and determine which dependencies need to be created
     // temporarily.
@@ -572,6 +574,11 @@ void VulkanStateWriter::WritePipelineState(const VulkanStateTable& state_table)
             {
                 ray_tracing_pipelines_khr.push_back(wrapper->create_parameters.get());
                 processed_ray_tracing_pipelines_khr.insert(wrapper->create_parameters.get());
+            }
+
+            if (wrapper->deferred_operation_id != format::kNullHandleId)
+            {
+                temp_deferred_operations.insert(wrapper->deferred_operation_id);
             }
         }
 
@@ -669,6 +676,20 @@ void VulkanStateWriter::WritePipelineState(const VulkanStateTable& state_table)
     for (const auto& entry : temp_layouts)
     {
         DestroyTemporaryDeviceObject(format::ApiCall_vkDestroyPipelineLayout, entry.first, entry.second);
+    }
+
+    for (const auto& entry : temp_deferred_operations)
+    {
+        auto             wrapper = state_table.GetDeferredOperationKHRWrapper(entry);
+        format::HandleId device_id =
+            *reinterpret_cast<const format::HandleId*>(wrapper->create_parameters.get()->GetData());
+
+        encoder_.EncodeHandleIdValue(device_id);
+        encoder_.EncodeHandleIdValue(entry);
+        WriteFunctionCall(format::ApiCall_vkGetDeferredOperationResultKHR, &parameter_stream_);
+        parameter_stream_.Reset();
+
+        WriteDestroyDeviceObject(format::ApiCall_vkDestroyDeferredOperationKHR, device_id, entry, nullptr);
     }
 }
 

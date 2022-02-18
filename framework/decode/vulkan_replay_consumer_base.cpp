@@ -5831,24 +5831,7 @@ void VulkanReplayConsumerBase::OverrideGetDeferredOperationMaxConcurrencyKHR(
     const DeviceInfo*                           device_info,
     const DeferredOperationKHRInfo*             deferred_operation_info)
 {
-    assert((device_info != nullptr) && (deferred_operation_info != nullptr));
-
-    VkDevice               device             = device_info->handle;
-    VkDeferredOperationKHR deferred_operation = deferred_operation_info->handle;
-
-    uint32_t max_threads  = std::thread::hardware_concurrency();
-    uint32_t thread_count = std::min(func(device, deferred_operation), max_threads);
-
-    PFN_vkDeferredOperationJoinKHR deferred_operation_join = GetDeviceTable(device)->DeferredOperationJoinKHR;
-
-    for (uint32_t i = 0; i < thread_count; i++)
-    {
-        deferred_operation_joins.emplace_back(
-            std::async(std::launch::async, [deferred_operation_join, device, deferred_operation]() {
-                VkResult result = deferred_operation_join(device, deferred_operation);
-                assert(result == VK_SUCCESS || result == VK_THREAD_DONE_KHR || result == VK_THREAD_IDLE_KHR);
-            }));
-    }
+    // Replay this in VulkanReplayConsumerBase::OverrideGetDeferredOperationResultKHR
 }
 
 VkResult
@@ -5857,7 +5840,7 @@ VulkanReplayConsumerBase::OverrideDeferredOperationJoinKHR(PFN_vkDeferredOperati
                                                            const DeviceInfo*               device_info,
                                                            const DeferredOperationKHRInfo* deferred_operation_info)
 {
-    // Replay this in VulkanReplayConsumerBase::OverrideGetDeferredOperationMaxConcurrencyKHR
+    // Replay this in VulkanReplayConsumerBase::OverrideGetDeferredOperationResultKHR
     return original_result;
 }
 
@@ -5869,13 +5852,30 @@ VulkanReplayConsumerBase::OverrideGetDeferredOperationResultKHR(PFN_vkGetDeferre
 {
     assert((device_info != nullptr) && (deferred_operation_info != nullptr));
 
+    VkDevice               device             = device_info->handle;
+    VkDeferredOperationKHR deferred_operation = deferred_operation_info->handle;
+
+    PFN_vkGetDeferredOperationMaxConcurrencyKHR vkGetDeferredOperationMaxConcurrencyKHR =
+        GetDeviceTable(device)->GetDeferredOperationMaxConcurrencyKHR;
+
+    uint32_t max_threads  = std::thread::hardware_concurrency();
+    uint32_t thread_count = std::min(vkGetDeferredOperationMaxConcurrencyKHR(device, deferred_operation), max_threads);
+
+    PFN_vkDeferredOperationJoinKHR vkDeferredOperationJoinKHR = GetDeviceTable(device)->DeferredOperationJoinKHR;
+
+    for (uint32_t i = 0; i < thread_count; i++)
+    {
+        deferred_operation_joins.emplace_back(
+            std::async(std::launch::async, [vkDeferredOperationJoinKHR, device, deferred_operation]() {
+                VkResult result = vkDeferredOperationJoinKHR(device, deferred_operation);
+                assert(result == VK_SUCCESS || result == VK_THREAD_DONE_KHR || result == VK_THREAD_IDLE_KHR);
+            }));
+    }
+
     for (auto& j : deferred_operation_joins)
     {
         j.get();
     }
-
-    VkDevice               device             = device_info->handle;
-    VkDeferredOperationKHR deferred_operation = deferred_operation_info->handle;
 
     return func(device, deferred_operation);
 }
